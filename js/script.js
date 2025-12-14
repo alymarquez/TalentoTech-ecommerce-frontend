@@ -155,6 +155,17 @@ document.addEventListener("DOMContentLoaded", () => {
                 return;
             }
 
+            const usuarioEmail = prompt(
+                "Ingresa tu email para el pedido (ej: cliente@ejemplo.com):"
+            );
+            if (!usuarioEmail || usuarioEmail.trim() === "") {
+                alert("Debes ingresar un email para realizar la compra");
+                return;
+            }
+
+            const usuarioNombre =
+                prompt("Ingresa tu nombre (opcional):") || "Cliente";
+
             try {
                 const productosMap = {};
                 cart.forEach((item) => {
@@ -162,10 +173,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
 
                 const pedidoData = {
+                    usuarioEmail: usuarioEmail,
+                    usuarioNombre: usuarioNombre,
                     productos: productosMap,
                 };
 
-                // Enviar pedido a backend
+                console.log("Enviando pedido:", pedidoData);
+
                 const response = await fetch("http://localhost:8081/api/pedidos", {
                     method: "POST",
                     headers: {
@@ -183,27 +197,46 @@ document.addEventListener("DOMContentLoaded", () => {
 
                     document.getElementById("modal-total").textContent = total.toFixed(2);
 
-                    // Mostrar el modal con info del pedido
+                    const modalBody = document.querySelector(
+                        "#compraExitosaModal .modal-body"
+                    );
+                    const extraInfo = document.createElement("div");
+                    extraInfo.innerHTML = `
+                <hr>
+                <p><strong>N° Pedido:</strong> ${pedidoCreado.id || "N/A"}</p>
+                <p><strong>Cliente:</strong> ${usuarioNombre}</p>
+                <p><strong>Estado:</strong> ${pedidoCreado.estado || "PENDIENTE"
+                        }</p>
+            `;
+                    modalBody.appendChild(extraInfo);
+
                     const modal = new bootstrap.Modal(
                         document.getElementById("compraExitosaModal")
                     );
                     modal.show();
 
-                    // Limpiar el carrito después de la compra exitosa
                     localStorage.clear();
                     updateCartUI();
+
+                    setTimeout(() => {
+                        fetch("http://localhost:8081/api/productos")
+                            .then((response) => response.json())
+                            .then((data) => {
+                                if (data && Array.isArray(data)) {
+                                    cargarProductos(data.slice(0, 10));
+                                }
+                            });
+                    }, 2000);
                 } else {
                     const errorData = await response.json();
                     alert(
-                        `Error al crear pedido: ${errorData.mensaje || "Stock insuficiente"
+                        `Error al crear pedido: ${errorData.mensaje || errorData.message || "Error desconocido"
                         }`
                     );
                 }
             } catch (error) {
                 console.error("Error:", error);
-                alert("Error de conexión con el servidor");
+                alert("Error de conexión con el servidor: " + error.message);
             }
         });
-
-    updateCartUI();
 });
